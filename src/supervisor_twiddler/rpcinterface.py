@@ -73,6 +73,34 @@ class TwiddlerNamespaceRPCInterface:
         self.supervisord.options.logger.log(level, message)
         return True
 
+    def addGroup(self, name, priority=999):
+        """ Add a new process group.
+        
+        @param string  group_name       Name of group to create
+        @param int     priority         Group start priority
+        @return boolean                 True unless error
+        """
+        self._update('addGroup')
+
+        options = self.supervisord.options
+        group_config = None
+        for config in options.process_group_configs:
+            if name == config.name:
+                group_config = config
+                break
+
+        if not group_config:
+            group_config = ProcessGroupConfig(options, name, priority, process_configs=[])
+            self.supervisord.options.process_group_configs.append(group_config)
+
+        if name not in self.supervisord.process_groups:
+            group_config.after_setuid()
+            self.supervisord.process_groups[name] = group_config.make_group()
+        else:
+            raise RPCError(SupervisorFaults.ALREADY_ADDED, name)
+
+        return True
+
     def addProgramToGroup(self, group_name, program_name, program_options):
         """ Add a new program to an existing process group.  Depending on the
             numprocs option, this will result in one or more processes being

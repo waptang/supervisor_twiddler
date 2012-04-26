@@ -110,6 +110,34 @@ class TestRPCInterface(unittest.TestCase):
         names.index('foo')
         names.index('bar')
     
+    # API Method twiddler.addGroup()
+
+    def test_addGroup_can_be_disabled(self):
+        supervisord = DummySupervisor()
+        interface = self.makeOne(supervisord, whitelist='foo,bar')
+        
+        self.assertRPCError(TwiddlerFaults.NOT_IN_WHITELIST,
+                            interface.addGroup, 'group', 999)
+    
+    def test_addGroup_adds_new_group(self):
+        supervisord = DummySupervisor()
+        interface = self.makeOne(supervisord)
+        
+        self.assertTrue(interface.addGroup('group', 999))
+        self.assertEquals(1, len(interface.supervisord.process_groups))
+        self.assertTrue('group' in interface.supervisord.process_groups)
+    
+    def test_addGroup_raises_already_added_when_group_already_exists(self):
+        pconfig = DummyPConfig(None, 'foo', '/bin/foo')
+        gconfig = DummyPGroupConfig(None, pconfigs=[pconfig])
+        pgroup = DummyProcessGroup(gconfig)
+        
+        supervisord = DummySupervisor(process_groups = {'foo': pgroup})
+        interface = self.makeOne(supervisord)
+        
+        self.assertRPCError(SupervisorFaults.ALREADY_ADDED,
+                            interface.addGroup, 'foo', 999)
+
     # API Method twiddler.addProgramToGroup()
 
     def test_addProgramToGroup_can_be_disabled(self):
